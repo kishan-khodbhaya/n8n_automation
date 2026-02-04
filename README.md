@@ -86,28 +86,6 @@ This automation was built to **eliminate those issues** by enforcing:
 
 ---
 
-## Logical Workflow Structure
-
-Form Trigger
-↓
-Normalize & Enrich Lead Data
-↓
-Validate Required Fields
-↓
-Lookup Existing Contact (PostgreSQL)
-↓
-IF Contact Exists?
-├── Update Contact
-└── Create Contact
-↓
-Telegram Notification
-↓
-Email Notification
-↓
-Execution Logging (PostgreSQL)
-
----
-
 ## Error Handling Philosophy
 
 - Validation errors stop execution early
