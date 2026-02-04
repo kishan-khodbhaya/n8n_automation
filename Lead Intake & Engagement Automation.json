@@ -1,0 +1,419 @@
+{
+  "name": "Lead Intake & Engagement Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Contact Us",
+        "formDescription": "Fill out the form and our team will contact you shortly.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "full_name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "email",
+              "fieldType": "email"
+            },
+            {
+              "fieldLabel": "phone",
+              "fieldType": "number"
+            },
+            {
+              "fieldType": "hiddenField",
+              "fieldName": "source",
+              "fieldValue": "n8n_form"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        0,
+        48
+      ],
+      "id": "10919f60-60bd-44d7-9b0a-d5f0b1a632c9",
+      "name": "On form submission",
+      "webhookId": "1ef206e2-3e5b-4842-8878-c940a57add8d"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "fdd4d988-bb50-4a56-91da-d8f4cf995894",
+              "name": "name",
+              "value": "={{ $json.full_name }}",
+              "type": "string"
+            },
+            {
+              "id": "39d17b68-f0ed-4e97-8c94-24dde2dad392",
+              "name": "email",
+              "value": "={{ $json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "b3faf917-7763-41e7-813f-19e79b137ccd",
+              "name": "phone",
+              "value": "={{ $json.phone ? String($json.phone) : null }}",
+              "type": "string"
+            },
+            {
+              "id": "7b2e4712-6cac-4752-a237-d0bf521cf55a",
+              "name": "source",
+              "value": "={{ $json.source }}",
+              "type": "string"
+            },
+            {
+              "id": "f2a66cdd-dcef-438f-bdbf-84d42a3207b8",
+              "name": "submitted_at",
+              "value": "={{ new Date().toISOString() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        48
+      ],
+      "id": "168e5d91-28aa-4f41-b343-31c2964d5f93",
+      "name": "Normalize & Enrich Lead Data"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "2e05daf9-c2c7-425c-a270-51af09ac03ee",
+              "leftValue": "={{ \n  !!$json.name && \n  ( !!$json.email || !!$json.phone ) \n}}",
+              "rightValue": "is true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        48
+      ],
+      "id": "1f1442b3-db4e-4a9f-9db3-0f8c5ed63440",
+      "name": "Validate Required Fields"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, email, phone\nFROM contacts\nWHERE\n  (\n    email = '{{ $json.email }}'\n    AND '{{ $json.email }}' IS NOT NULL\n    AND '{{ $json.email }}' != ''\n  )\n  OR\n  (\n    phone = '{{ $json.phone }}'\n    AND '{{ $json.phone }}' IS NOT NULL\n    AND '{{ $json.phone }}' != ''\n  )\nLIMIT 1;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        672,
+        48
+      ],
+      "id": "41ebcbf6-c29e-41a8-9ede-5cb6def00e5a",
+      "name": "Lookup Existing Contact",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "SpHq1SRQKzN4F9Q0",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "80251659-8713-4218-8b39-c13937056bfb",
+              "leftValue": "={{ $json.id !== undefined }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        896,
+        48
+      ],
+      "id": "ff019c99-488f-4e7e-9324-18b8e756c323",
+      "name": "Contact Exists?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO contacts (\n  name,\n  email,\n  phone,\n  source,\n  created_at,\n  updated_at\n)\nVALUES (\n  '{{ $json.name }}',\n  '{{ $json.email }}',\n  '{{ $json.phone }}',\n  '{{ $json.source }}',\n  NOW(),\n  NOW()\n)\nRETURNING\n  id,\n  name,\n  email,\n  phone,\n  source,\n  created_at,\n  updated_at;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1120,
+        240
+      ],
+      "id": "742a0f36-ac75-43f7-9f4c-43759f4981a9",
+      "name": "Create Contact",
+      "credentials": {
+        "postgres": {
+          "id": "SpHq1SRQKzN4F9Q0",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE contacts\nSET\n  name = '{{ $json.name }}',\n  email = '{{ $json.email }}',\n  phone = '{{ $json.phone }}',\n  source = '{{ $json.source }}',\n  updated_at = NOW()\nWHERE id = {{ $json.id }}\nRETURNING\n  id,\n  name,\n  email,\n  phone,\n  source,\n  created_at,\n  updated_at;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1120,
+        -144
+      ],
+      "id": "7a243dbe-14f1-4dae-8efb-f2f8dd0c351c",
+      "name": "Update Contact",
+      "credentials": {
+        "postgres": {
+          "id": "SpHq1SRQKzN4F9Q0",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "632406569",
+        "text": "=📩 New Lead Processed\n\nName: {{ $json.name }}\nEmail: {{ $json.email || 'N/A' }}\nPhone: {{ $json.phone || 'N/A' }}\nSource: {{ $json.source }}\n",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1344,
+        -144
+      ],
+      "id": "bff4311e-ebb0-4edd-8ea5-651d8689e541",
+      "name": "Send Telegram Notification",
+      "webhookId": "fd5db2c9-7817-47d1-9675-13d8f776650d",
+      "credentials": {
+        "telegramApi": {
+          "id": "B0ep7a4I55l1wASX",
+          "name": "Telegram account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "fromEmail": "khodbhaya1843@gmail.com",
+        "toEmail": "rayanapex136@gmail.com",
+        "subject": "New Lead Processed",
+        "html": "=<!DOCTYPE html>\n<html>\n  <body style=\"font-family: Arial, Helvetica, sans-serif; background-color: #f5f5f5; padding: 20px;\">\n    <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width: 600px; margin: auto; background: #ffffff; border-radius: 6px; padding: 20px;\">\n      \n      <tr>\n        <td style=\"font-size: 18px; font-weight: bold; padding-bottom: 16px;\">\n          📩 New Lead Processed\n        </td>\n      </tr>\n\n      <tr>\n        <td style=\"padding: 6px 0;\">\n          <strong>Name:</strong> {{ $json.name }}\n        </td>\n      </tr>\n\n      <tr>\n        <td style=\"padding: 6px 0;\">\n          <strong>Email:</strong> {{ $json.email || 'N/A' }}\n        </td>\n      </tr>\n\n      <tr>\n        <td style=\"padding: 6px 0;\">\n          <strong>Phone:</strong> {{ $json.phone || 'N/A' }}\n        </td>\n      </tr>\n\n      <tr>\n        <td style=\"padding: 6px 0;\">\n          <strong>Source:</strong> {{ $json.source }}\n        </td>\n      </tr>\n\n      <tr>\n        <td style=\"padding-top: 20px; font-size: 12px; color: #777;\">\n          This is an automated notification.\n        </td>\n      </tr>\n\n    </table>\n  </body>\n</html>\n",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1344,
+        48
+      ],
+      "id": "52b28ade-c87f-4439-a91f-7f0a9fc2d229",
+      "name": "Send Email Notification",
+      "webhookId": "403961bd-e456-4954-b2e9-189eaf3dc339",
+      "credentials": {
+        "smtp": {
+          "id": "3PHdzVt6xM58nqQY",
+          "name": "SMTP account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO workflow_logs (\n  event_type,\n  payload,\n  status,\n  created_at\n)\nVALUES (\n  'lead_processed',\n  '{{ JSON.stringify($json) }}'::jsonb,\n  'success',\n  NOW()\n);\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1344,
+        240
+      ],
+      "id": "800977d5-655e-404d-a9ec-c6d71036216e",
+      "name": "Log Workflow Execution",
+      "credentials": {
+        "postgres": {
+          "id": "SpHq1SRQKzN4F9Q0",
+          "name": "Postgres account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Normalize & Enrich Lead Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize & Enrich Lead Data": {
+      "main": [
+        [
+          {
+            "node": "Validate Required Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Required Fields": {
+      "main": [
+        [
+          {
+            "node": "Lookup Existing Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Existing Contact": {
+      "main": [
+        [
+          {
+            "node": "Contact Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contact Exists?": {
+      "main": [
+        [
+          {
+            "node": "Update Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Contact": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Notification",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Email Notification",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Workflow Execution",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Contact": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Notification",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Email Notification",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Workflow Execution",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Telegram Notification": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "6a230259-b117-4bd6-9465-43ca9c0c2ae0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f276b02fc676631aa8927a4093de510c31325311c19fb9cec499c8733bffa1f0"
+  },
+  "id": "4WwCdE5--nmoki9MURq7b",
+  "tags": []
+}
