@@ -32,7 +32,7 @@
       "typeVersion": 2.5,
       "position": [
         0,
-        48
+        224
       ],
       "id": "10919f60-60bd-44d7-9b0a-d5f0b1a632c9",
       "name": "On form submission",
@@ -80,7 +80,7 @@
       "typeVersion": 3.4,
       "position": [
         224,
-        48
+        224
       ],
       "id": "168e5d91-28aa-4f41-b343-31c2964d5f93",
       "name": "Normalize & Enrich Lead Data"
@@ -114,7 +114,7 @@
       "typeVersion": 2.3,
       "position": [
         448,
-        48
+        224
       ],
       "id": "1f1442b3-db4e-4a9f-9db3-0f8c5ed63440",
       "name": "Validate Required Fields"
@@ -129,7 +129,7 @@
       "typeVersion": 2.6,
       "position": [
         672,
-        48
+        224
       ],
       "id": "41ebcbf6-c29e-41a8-9ede-5cb6def00e5a",
       "name": "Lookup Existing Contact",
@@ -170,7 +170,7 @@
       "typeVersion": 2.3,
       "position": [
         896,
-        48
+        224
       ],
       "id": "ff019c99-488f-4e7e-9324-18b8e756c323",
       "name": "Contact Exists?"
@@ -184,8 +184,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1120,
-        240
+        1344,
+        320
       ],
       "id": "742a0f36-ac75-43f7-9f4c-43759f4981a9",
       "name": "Create Contact",
@@ -199,28 +199,29 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE contacts\nSET\n  name = '{{ $json.name }}',\n  email = '{{ $json.email }}',\n  phone = '{{ $json.phone }}',\n  source = '{{ $json.source }}',\n  updated_at = NOW()\nWHERE id = {{ $json.id }}\nRETURNING\n  id,\n  name,\n  email,\n  phone,\n  source,\n  created_at,\n  updated_at;\n",
+        "query": "INSERT INTO workflow_logs (\n  event_type,\n  payload,\n  status,\n  created_at\n)\nVALUES (\n  'lead_processed',\n  '{{ JSON.stringify($json) }}'::jsonb,\n  'success',\n  NOW()\n);\n",
         "options": {}
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
         1120,
-        -144
+        128
       ],
-      "id": "7a243dbe-14f1-4dae-8efb-f2f8dd0c351c",
-      "name": "Update Contact",
+      "id": "800977d5-655e-404d-a9ec-c6d71036216e",
+      "name": "Log Workflow Execution",
       "credentials": {
         "postgres": {
           "id": "SpHq1SRQKzN4F9Q0",
           "name": "Postgres account"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
         "chatId": "632406569",
-        "text": "=📩 New Lead Processed\n\nName: {{ $json.name }}\nEmail: {{ $json.email || 'N/A' }}\nPhone: {{ $json.phone || 'N/A' }}\nSource: {{ $json.source }}\n",
+        "text": "=📩 <b>New Lead Processed</b><br><br>\n<b>Name:</b> {{$json.name}}<br>\n<b>Email:</b> {{$json.email || 'N/A'}}<br>\n<b>Phone:</b> {{$json.phone || 'N/A'}}<br>\n<b>Source:</b> {{$json.source}}\n",
         "additionalFields": {
           "appendAttribution": false
         }
@@ -228,11 +229,11 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        1344,
-        -144
+        1776,
+        128
       ],
-      "id": "bff4311e-ebb0-4edd-8ea5-651d8689e541",
-      "name": "Send Telegram Notification",
+      "id": "5cc505b1-5bb8-44ff-b50a-e7b3c83ecb52",
+      "name": "Send Telegram Notification1",
       "webhookId": "fd5db2c9-7817-47d1-9675-13d8f776650d",
       "credentials": {
         "telegramApi": {
@@ -255,11 +256,11 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        1344,
-        48
+        1776,
+        320
       ],
-      "id": "52b28ade-c87f-4439-a91f-7f0a9fc2d229",
-      "name": "Send Email Notification",
+      "id": "f990af12-dda3-4e89-aa25-37ec7c244334",
+      "name": "Send Email Notification1",
       "webhookId": "403961bd-e456-4954-b2e9-189eaf3dc339",
       "credentials": {
         "smtp": {
@@ -278,11 +279,11 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1344,
-        240
+        1776,
+        512
       ],
-      "id": "800977d5-655e-404d-a9ec-c6d71036216e",
-      "name": "Log Workflow Execution",
+      "id": "237d3b6c-d9a4-4770-b283-857b971e4592",
+      "name": "Log Workflow Execution1",
       "credentials": {
         "postgres": {
           "id": "SpHq1SRQKzN4F9Q0",
@@ -290,9 +291,101 @@
         }
       },
       "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "06a151ab-b874-4206-9ed8-7b254239b713",
+              "name": "name",
+              "value": "={{ $('Normalize & Enrich Lead Data').item.json.name }}",
+              "type": "string"
+            },
+            {
+              "id": "c5734eda-e69f-4a26-8be6-838100f436df",
+              "name": "email",
+              "value": "={{ $('Normalize & Enrich Lead Data').item.json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "d3b860ad-12f5-4a8e-a6c0-244a617228ca",
+              "name": "phone",
+              "value": "={{ $('Normalize & Enrich Lead Data').item.json.phone }}",
+              "type": "string"
+            },
+            {
+              "id": "7e005e4f-7e02-4ee9-b08c-c01175c3e31a",
+              "name": "source",
+              "value": "={{ $('Normalize & Enrich Lead Data').item.json.source }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1120,
+        320
+      ],
+      "id": "49de52ec-59be-495f-85b7-98298f69093a",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8503657654:AAH9rXVUvCY_ptbRMPzMCPNM1eIr4t2lOhU/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"632406569\",\n  \"parse_mode\": \"HTML\",\n  \"text\": \"📩 <b>New Lead Processed</b>\\n\\n<b>Name:</b> {{$json.name}}\\n<b>Email:</b> {{$json.email || 'N/A'}}\\n<b>Phone:</b> {{$json.phone || 'N/A'}}\\n<b>Source:</b> {{$json.source}}\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1552,
+        320
+      ],
+      "id": "ecb859d9-d541-483d-a4d4-e04d40d10d74",
+      "name": "HTTP Request"
     }
   ],
-  "pinData": {},
+  "pinData": {
+    "Normalize & Enrich Lead Data": [
+      {
+        "json": {
+          "name": "gsg",
+          "email": "gsg@mail.com",
+          "phone": "445243324",
+          "source": "n8n_form",
+          "submitted_at": "2026-02-05T05:43:49.183Z"
+        }
+      }
+    ],
+    "Lookup Existing Contact": [
+      {
+        "json": {},
+        "pairedItem": [
+          {
+            "item": 0,
+            "input": 0
+          }
+        ]
+      }
+    ],
+    "Edit Fields": [
+      {
+        "json": {
+          "name": "ee",
+          "email": "ee@mail.com",
+          "phone": "45443324",
+          "source": "n8n_form"
+        }
+      }
+    ]
+  },
   "connections": {
     "On form submission": {
       "main": [
@@ -342,35 +435,14 @@
       "main": [
         [
           {
-            "node": "Update Contact",
+            "node": "Log Workflow Execution",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Create Contact",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Update Contact": {
-      "main": [
-        [
-          {
-            "node": "Send Telegram Notification",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Send Email Notification",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Log Workflow Execution",
+            "node": "Edit Fields",
             "type": "main",
             "index": 0
           }
@@ -381,26 +453,43 @@
       "main": [
         [
           {
-            "node": "Send Telegram Notification",
+            "node": "Send Email Notification1",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Send Email Notification",
+            "node": "Log Workflow Execution1",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Log Workflow Execution",
+            "node": "HTTP Request",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Send Telegram Notification": {
+    "Edit Fields": {
       "main": [
-        []
+        [
+          {
+            "node": "Create Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Notification1",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
@@ -409,7 +498,7 @@
     "executionOrder": "v1",
     "availableInMCP": false
   },
-  "versionId": "6a230259-b117-4bd6-9465-43ca9c0c2ae0",
+  "versionId": "98c3b840-8722-4731-9f5d-a0e93e08dfbd",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "f276b02fc676631aa8927a4093de510c31325311c19fb9cec499c8733bffa1f0"
